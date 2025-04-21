@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Moje mapa</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="styles.css" >
+</head>
+<body>
+
+<!-- navigacni lista -->
+<nav class="navbar navbar-expand-lg bg-dark navbar-dark">
+  <div class="container-fluid">
+    <span class="navbar-brand">Moje Mapa</span>
+    <button class="btn btn-outline-light ms-auto" data-bs-toggle="modal" data-bs-target="#settingsModal">Nastavení</button>
+  </div>
+</nav>
+
+<!-- blok s mapou -->
+<div class="map-container" id="mapContainer">
+  <div id="map"></div>
+</div>
+
+<!-- overlay s chybovou hlaskou -->
+<div id="locationOverlay" class="d-flex flex-column">
+  <h2>Pro zobrazení mapy je nutné povolit sdílení polohy!</h2>
+  <p>V nastavení prohlížeče nebo v liště povolte přístup k poloze.</p>
+  <button id="retryLocationBtn" class="btn btn-danger mt-3">Zkusit znovu</button>
+</div>
+
+<!-- nastaveni jmena a oznameni -->
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="settingsModalLabel">Nastavení</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="nameInput" class="form-label">Jméno:</label>
+          <input type="text" id="nameInput" class="form-control" placeholder="Zadej své jméno" maxlength="20"/>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="notificationsSwitch"/>
+          <label class="form-check-label" for="notificationsSwitch">Oznámení o blízkosti ostatních</label>
+        </div>
+        <div class="mt-3">
+          <label for="distanceRange" class="form-label">
+            Vzdálenost pro oznámení: <span id="distanceValue">50</span> m
+          </label>
+          <input type="range" class="form-range" min="1" max="1000" step="1" id="distanceRange">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
+        <button type="button" class="btn btn-primary" id="saveSettingsBtn" data-bs-dismiss="modal">Uložit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
