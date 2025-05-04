@@ -1,5 +1,8 @@
 # moje-mapa
 
+Formulář pro testery:
+https://docs.google.com/forms/d/e/1FAIpQLScCrg_7ptebJDJVmY7T2mA4rCS8mvXFdGE_eyuqDxodM2LfYg/viewform?usp=dialog
+
 ![1745260417307](image/README/1745260417307.png)
 
 
