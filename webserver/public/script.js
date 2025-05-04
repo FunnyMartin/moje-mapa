@@ -1,3 +1,10 @@
+/**
+ * Moje Mapa – front‑end controller  
+ * • Bootstraps on window load, restores settings from localStorage  
+ * • Handles geolocation ↔ Leaflet map + Socket.IO messaging  
+ * Author Martin Šilar · 2025
+ */
+
 const socket = io();
 
 let map;
@@ -12,9 +19,25 @@ const mapContainer = document.getElementById('mapContainer');
 const locationOverlay = document.getElementById('locationOverlay');
 const retryLocationBtn = document.getElementById('retryLocationBtn');
 
+/* ───── Boot ───── */
 window.addEventListener('load', () => {
   console.log("Aplikace načtena.");
 
+  restoreFromLocalStorage();
+  wireUiEvents();
+
+  socket.emit('userSettings', {
+    name: myName,
+    notificationsEnabled: notificationsEnabled
+  });
+
+  retryLocationBtn.addEventListener('click', initGeolocation);
+  initGeolocation();
+});
+
+/* ───── Local storage helpers ───── */
+/** Restore name / alert toggle / distance from localStorage. */
+function restoreFromLocalStorage() {
   const savedName = localStorage.getItem('myName');
   const savedNotifications = localStorage.getItem('notificationsEnabled');
   const savedDistance = localStorage.getItem('notificationDistance');
@@ -28,49 +51,51 @@ window.addEventListener('load', () => {
 
   const distanceRange = document.getElementById('distanceRange');
   const distanceValue = document.getElementById('distanceValue');
+  distanceRange.value = notificationDistance;
+  distanceValue.textContent = notificationDistance;
+}
 
-  if (distanceRange && distanceValue) {
-    distanceRange.value = notificationDistance;
+/** Attach listeners to modal controls (range slider, save button). */
+function wireUiEvents() {
+  const distanceRange = document.getElementById('distanceRange');
+  const distanceValue = document.getElementById('distanceValue');
+
+  distanceRange.addEventListener('input', () => {
+    notificationDistance = parseInt(distanceRange.value, 10);
     distanceValue.textContent = notificationDistance;
+  });
 
-    distanceRange.addEventListener('input', () => {
-      notificationDistance = parseInt(distanceRange.value, 10);
-      distanceValue.textContent = notificationDistance;
-    });
+  document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+}
+
+/** Save current settings to localStorage and notify server. */
+function saveSettings() {
+  myName = document.getElementById('nameInput').value || 'Neznámý';
+  if (myName.length > 20) {
+    alert("Jméno nesmí mít více než 20 znaků.");
+    return;
   }
 
-  document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-    myName = document.getElementById('nameInput').value || 'Neznámý';
-    if (myName.length > 20) {
-      alert("Jméno nesmí mít více než 20 znaků.");
-      return;
-    }
+  notificationsEnabled = document.getElementById('notificationsSwitch').checked;
+  notificationDistance = parseInt(document.getElementById('distanceRange').value, 10);
 
-    notificationsEnabled = document.getElementById('notificationsSwitch').checked;
-    notificationDistance = parseInt(distanceRange.value, 10);
-
-    localStorage.setItem('myName', myName);
-    localStorage.setItem('notificationsEnabled', notificationsEnabled);
-    localStorage.setItem('notificationDistance', notificationDistance);
-
-    socket.emit('userSettings', {
-      name: myName,
-      notificationsEnabled: notificationsEnabled
-    });
-
-    console.log("Uloženo nastavení:", myName, notificationsEnabled, notificationDistance);
-  });
+  localStorage.setItem('myName', myName);
+  localStorage.setItem('notificationsEnabled', notificationsEnabled);
+  localStorage.setItem('notificationDistance', notificationDistance);
 
   socket.emit('userSettings', {
     name: myName,
     notificationsEnabled: notificationsEnabled
   });
 
-  retryLocationBtn.addEventListener('click', initGeolocation);
+  console.log("Uloženo nastavení:", myName, notificationsEnabled, notificationDistance);
+}
 
-  initGeolocation();
-});
-
+/* ───── Geolocation ───── */
+/**
+ * Request current position; on success hides overlay, creates map,
+ * starts 5 s polling loop. On error shows overlay with retry button.
+ */
 function initGeolocation() {
   console.log("Spouštím získání polohy...");
   mapContainer.style.display = 'none';
@@ -82,36 +107,7 @@ function initGeolocation() {
   }
 
   navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      console.log("Získaná poloha:", pos.coords);
-      
-      locationOverlay.style.display = 'none';
-      locationOverlay.classList.add('d-none');
-      locationOverlay.style.visibility = 'hidden';
-      locationOverlay.style.opacity = '0';
-
-      mapContainer.style.display = 'block';
-      mapContainer.classList.remove('d-none');
-  
-      setTimeout(() => {
-        if (locationOverlay.style.display !== 'none') {
-          console.warn("Overlay stále zobrazen – schovávám znovu jako pojistku.");
-          locationOverlay.style.display = 'none';
-          locationOverlay.style.visibility = 'hidden';
-          locationOverlay.style.opacity = '0';
-        }
-      }, 1000);
-  
-      if (!map) {
-        initMap(pos.coords.latitude, pos.coords.longitude);
-      }
-  
-      updateLocation(pos);
-  
-      setInterval(() => {
-        navigator.geolocation.getCurrentPosition(updateLocation, locationError);
-      }, 5000);
-    },
+    (pos) => onFirstPosition(pos),
     locationError,
     {
       enableHighAccuracy: true,
@@ -121,6 +117,35 @@ function initGeolocation() {
   );
 }
 
+/** First successful position fetch → hide overlay, init map, start loop. */
+function onFirstPosition(pos) {
+  console.log("Získaná poloha:", pos.coords);
+
+  locationOverlay.style.display = 'none';
+  locationOverlay.classList.add('d-none');
+  locationOverlay.style.visibility = 'hidden';
+  locationOverlay.style.opacity = '0';
+
+  mapContainer.style.display = 'block';
+  mapContainer.classList.remove('d-none');
+
+  setTimeout(() => {
+    if (locationOverlay.style.display !== 'none') {
+      locationOverlay.style.display = 'none';
+      locationOverlay.style.visibility = 'hidden';
+      locationOverlay.style.opacity = '0';
+    }
+  }, 1000);
+
+  if (!map) initMap(pos.coords.latitude, pos.coords.longitude);
+  updateLocation(pos);
+
+  setInterval(() => {
+    navigator.geolocation.getCurrentPosition(updateLocation, locationError);
+  }, 5000);
+}
+
+/** Show overlay with error details when geolocation fails. */
 function locationError(err) {
   console.warn('Chyba při získávání polohy:', err);
   mapContainer.style.display = 'none';
@@ -132,6 +157,12 @@ function locationError(err) {
   }
 }
 
+/* ───── Leaflet ───── */
+/**
+ * Create Leaflet map centered on user's initial coordinates.
+ * @param {number} lat
+ * @param {number} lng
+ */
 function initMap(lat, lng) {
   console.log("Inicializuji mapu s polohou:", lat, lng);
 
@@ -150,6 +181,10 @@ function initMap(lat, lng) {
   }
 }
 
+/**
+ * Emit current coords to server and move local marker.
+ * @param {GeolocationPosition} pos
+ */
 function updateLocation(pos) {
   if (!pos.coords) {
     console.warn("Chybějící souřadnice při updateLocation.");
@@ -158,8 +193,6 @@ function updateLocation(pos) {
 
   const lat = pos.coords.latitude;
   const lng = pos.coords.longitude;
-  console.log("Odesílám svou pozici na server:", lat, lng);
-
   socket.emit('sendLocation', { lat, lng });
 
   if (myMarker) {
@@ -168,18 +201,10 @@ function updateLocation(pos) {
   }
 }
 
-socket.on('updateLocations', (userArray) => {
-  console.log("Přišla data od serveru:", userArray);
-
-  if (!map) {
-    console.warn("Mapa ještě není připravená, ukládám pozice...");
-    pendingUserArray = userArray;
-    return;
-  }
-
-  renderMarkers(userArray);
-});
-
+/**
+ * Draw all other users on the map, skipping self, incl. proximity alert.
+ * @param {Array<User>} userArray
+ */
 function renderMarkers(userArray) {
   for (let id in otherMarkers) {
     map.removeLayer(otherMarkers[id]);
@@ -208,3 +233,13 @@ function renderMarkers(userArray) {
     }
   });
 }
+
+/* ───── WebSocket event ───── */
+/** Full snapshot from server → draw (or buffer if map not ready). */
+socket.on('updateLocations', (userArray) => {
+  if (!map) {
+    pendingUserArray = userArray;
+  } else {
+    renderMarkers(userArray);
+  }
+});
