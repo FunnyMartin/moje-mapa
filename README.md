@@ -1,5 +1,11 @@
 # moje-mapa
 
+## Nasazení
+1. git clone https://github.com/FunnyMartin/moje-mapa.git 
+2. cd moje-mapa/webserver && npm install 
+3. node app.js 
+
+
 Formulář pro testery:
 https://docs.google.com/forms/d/e/1FAIpQLScCrg_7ptebJDJVmY7T2mA4rCS8mvXFdGE_eyuqDxodM2LfYg/viewform?usp=dialog
 
